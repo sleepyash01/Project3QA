@@ -1,0 +1,36 @@
+from time import sleep
+from playwright.sync_api import Playwright
+
+def test_eng_to_arb(playwright:Playwright):
+    browser = playwright.firefox.launch(headless=False)
+    context = browser.new_context()
+    page = context.new_page()
+    page.goto('https://app.sparkskool.com/auth/login')
+    sleep(3)
+    page.locator('#email').fill('hamdalla.56sh@gmail.com')
+    page.locator('#password').fill('karam123')
+    page.keyboard.press('Enter')
+    sleep(3)
+    page.locator('.text-white',has_text='Hamdala').click()
+    sleep(3)
+    page.locator('.block').nth(3).click()
+    sleep(2)
+    page.locator('.w-full').nth(8).click()
+    sleep(2)
+    page.locator('.w-full').nth(9).click()
+    sleep(5)
+
+def test_talk_to_ai(playwright:Playwright):
+    browser = playwright.firefox.launch(headless=False)
+    context = browser.new_context()
+    page = context.new_page()
+    page.goto('https://app.sparkskool.com/auth/login')
+    sleep(3)
+    page.locator('#email').fill('hamdalla.56sh@gmail.com')
+    page.locator('#password').fill('karam123')
+    page.keyboard.press('Enter')
+    sleep(3)
+    page.locator('.absolute').nth(0).fill('hi, i want a teaching plan for my next physics class, subject about newtons second law')
+    sleep(1)
+    page.locator('.opacity-100').nth(0).click()
+    sleep(20)
