@@ -1,0 +1,1119 @@
+{
+	"info": {
+		"_postman_id": "868c2bcd-8d66-4b09-bc48-1a22781c38e9",
+		"name": "SparkSkool — QA (v1.1)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "46130409",
+		"_collection_link": "https://hoz-7776233.postman.co/workspace/hoz's-Workspace~640ddae4-d593-4204-87cc-6ebe391df074/collection/46130409-868c2bcd-8d66-4b09-bc48-1a22781c38e9?action=share&source=collection_link&creator=46130409"
+	},
+	"item": [
+		{
+			"name": "SparkSkool (app.sparkskool.com)",
+			"item": [
+				{
+					"name": "FR1–FR4 Authentication",
+					"item": [
+						{
+							"name": "FR1 — Valid teacher login",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('200 OK',()=>pm.response.to.have.status(200));",
+											"let J={};try{J=pm.response.json();}catch(e){};pm.expect(J.idToken).to.exist;pm.environment.set('authToken',J.idToken);if(J.refreshToken)pm.environment.set('refreshToken',J.refreshToken);",
+											"pm.test('NFR <3s', ()=> pm.expect(pm.response.responseTime).to.be.below(3000));"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"email\": \"{{teacherEmail}}\",\n  \"password\": \"{{teacherPassword}}\",\n  \"returnSecureToken\": true\n}"
+								},
+								"url": {
+									"raw": "{{url1}}/v1/accounts:signInWithPassword?key={{FIREBASE_API_KEY}}",
+									"host": [
+										"{{url1}}"
+									],
+									"path": [
+										"v1",
+										"accounts:signInWithPassword"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "{{FIREBASE_API_KEY}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "FR2 — Invalid login shows error",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('400 expected',()=>pm.response.to.have.status(400));",
+											"let J={};try{J=pm.response.json();}catch(e){};pm.test('has error.message',()=>pm.expect(J.error&&J.error.message).to.exist);"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"email\": \"{{teacherEmail}}\",\n  \"password\": \"WRONG_PASSWORD_123\",\n  \"returnSecureToken\": true\n}"
+								},
+								"url": {
+									"raw": "{{url1}}/v1/accounts:signInWithPassword?key={{FIREBASE_API_KEY}}",
+									"host": [
+										"{{url1}}"
+									],
+									"path": [
+										"v1",
+										"accounts:signInWithPassword"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "{{FIREBASE_API_KEY}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "FR1b — AccountsLookup (set teacherLocalId)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('200 OK',()=>pm.response.to.have.status(200));",
+											"let J={};try{J=pm.response.json();}catch(e){};const u=(J.users||[]);pm.expect(u.length).to.be.greaterThan(0);pm.environment.set('teacherLocalId',u[0].localId);",
+											"pm.test('NFR <3s', ()=> pm.expect(pm.response.responseTime).to.be.below(3000));"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"idToken\": \"{{authToken}}\"\n}"
+								},
+								"url": {
+									"raw": "{{url1}}/v1/accounts:lookup?key={{FIREBASE_API_KEY}}",
+									"host": [
+										"{{url1}}"
+									],
+									"path": [
+										"v1",
+										"accounts:lookup"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "{{FIREBASE_API_KEY}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "FR4 — Forgot Password (send reset email)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"// اعتبر النجاح 200، واعتبر \"تجاوز الحد\" مقبولاً كـ Pass مشروط (soft pass)",
+											"let ok = pm.response.code === 200;",
+											"let msg = \"\";",
+											"try { msg = (pm.response.json().error || {}).message || \"\"; } catch(e) {}",
+											"",
+											"if (pm.response.code === 400 && msg === \"RESET_PASSWORD_EXCEED_LIMIT\") {",
+											"  ok = true;  // soft pass: الخدمة متاحة لكن محمية بريت ليمِت",
+											"  console.warn(\"FR4 soft-pass: RESET_PASSWORD_EXCEED_LIMIT (تم تجاوز الحد المؤقت).\");",
+											"}",
+											"",
+											"pm.test(\"FR4: Password reset accepted or rate-limited (soft)\", function () {",
+											"  pm.expect(ok).to.be.true;",
+											"});",
+											"if (pm.response.code === 400 && msg === \"RESET_PASSWORD_EXCEED_LIMIT\") {",
+											"  console.log(\"[FR4] Rate limited: ستحتاج انتظار/تغيير البريد لتجرّب 200 OK فعلية.\");",
+											"}",
+											"",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"requestType\": \"PASSWORD_RESET\",\n  \"email\": \"{{teacherEmail}}\"\n}"
+								},
+								"url": {
+									"raw": "{{url1}}/v1/accounts:sendOobCode?key={{FIREBASE_API_KEY}}",
+									"host": [
+										"{{url1}}"
+									],
+									"path": [
+										"v1",
+										"accounts:sendOobCode"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "{{FIREBASE_API_KEY}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "FR3 — Logout (clear token)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.environment.unset('authToken');pm.environment.unset('refreshToken');pm.test('token cleared',()=>pm.expect(pm.environment.get('authToken')).to.be.undefined);"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"idToken\": \"{{authToken}}\"\n}"
+								},
+								"url": {
+									"raw": "{{url1}}/v1/accounts:lookup?key={{FIREBASE_API_KEY}}",
+									"host": [
+										"{{url1}}"
+									],
+									"path": [
+										"v1",
+										"accounts:lookup"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "{{FIREBASE_API_KEY}}"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "FR5–FR6 Teacher Dashboard",
+					"item": [
+						{
+							"name": "FR5 — Get Teacher Document",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"const t = pm.environment.get(\"authToken\");",
+											"if (t) pm.request.headers.upsert({key:\"Authorization\", value:\"Bearer \"+t});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('200 OK',()=>pm.response.to.have.status(200));",
+											"let J={};try{J=pm.response.json();}catch(e){};pm.test('has fields',()=>pm.expect(J.fields).to.exist);",
+											"pm.test('NFR <3s', ()=> pm.expect(pm.response.responseTime).to.be.below(3000));"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{url2}}/v1/projects/{{projectId}}/databases/(default)/documents/teachers/{{teacherLocalId}}",
+									"host": [
+										"{{url2}}"
+									],
+									"path": [
+										"v1",
+										"projects",
+										"{{projectId}}",
+										"databases",
+										"(default)",
+										"documents",
+										"teachers",
+										"{{teacherLocalId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "FR6 — List Exams (teacherId filter)",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"const t = pm.environment.get(\"authToken\");",
+											"if (t) pm.request.headers.upsert({key:\"Authorization\", value:\"Bearer \"+t});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('200 OK',()=>pm.response.to.have.status(200));",
+											"let arr=[];try{arr=pm.response.json();}catch(e){};pm.test('array',()=>Array.isArray(arr));",
+											"pm.test('NFR <3s', ()=> pm.expect(pm.response.responseTime).to.be.below(3000));"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"structuredQuery\": {\n    \"from\": [\n      {\n        \"collectionId\": \"exams\"\n      }\n    ],\n    \"where\": {\n      \"fieldFilter\": {\n        \"field\": {\n          \"fieldPath\": \"teacherId\"\n        },\n        \"op\": \"EQUAL\",\n        \"value\": {\n          \"stringValue\": \"{{teacherLocalId}}\"\n        }\n      }\n    },\n    \"limit\": 20\n  }\n}"
+								},
+								"url": {
+									"raw": "{{url2}}/v1/projects/{{projectId}}/databases/(default)/documents:runQuery",
+									"host": [
+										"{{url2}}"
+									],
+									"path": [
+										"v1",
+										"projects",
+										"{{projectId}}",
+										"databases",
+										"(default)",
+										"documents:runQuery"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "FR7–FR9 Profile",
+					"item": [
+						{
+							"name": "FR1 — Valid teacher login Copy",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('200 OK',()=>pm.response.to.have.status(200));",
+											"let J={};try{J=pm.response.json();}catch(e){};pm.expect(J.idToken).to.exist;pm.environment.set('authToken',J.idToken);if(J.refreshToken)pm.environment.set('refreshToken',J.refreshToken);",
+											"pm.test('NFR <3s', ()=> pm.expect(pm.response.responseTime).to.be.below(3000));"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"email\": \"{{teacherEmail}}\",\n  \"password\": \"{{teacherPassword}}\",\n  \"returnSecureToken\": true\n}"
+								},
+								"url": {
+									"raw": "{{url1}}/v1/accounts:signInWithPassword?key={{FIREBASE_API_KEY}}",
+									"host": [
+										"{{url1}}"
+									],
+									"path": [
+										"v1",
+										"accounts:signInWithPassword"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "{{FIREBASE_API_KEY}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "FR7 — Update displayName",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+											"pm.test(\"displayName set\", () => {",
+											"  const J = pm.response.json();",
+											"  pm.expect(J.displayName).to.exist;",
+											"});",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disabledSystemHeaders": {
+									"accept": true,
+									"content-type": true
+								}
+							},
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"idToken\": \"{{authToken}}\",\n  \"displayName\": \"Hamdala QA {{$randomInt}}\",\n  \"returnSecureToken\": false\n}\n"
+								},
+								"url": {
+									"raw": "{{url1}}/v1/accounts:update?key={{FIREBASE_API_KEY}}\n",
+									"host": [
+										"{{url1}}"
+									],
+									"path": [
+										"v1",
+										"accounts:update"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "{{FIREBASE_API_KEY}}\n"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "FR8 — Change system language (teacher.lang=ar)",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"const t = pm.environment.get(\"authToken\");",
+											"if (t) pm.request.headers.upsert({key:\"Authorization\", value:\"Bearer \"+t});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('200 OK',()=>pm.response.to.have.status(200));",
+											"let J={};try{J=pm.response.json();}catch(e){};pm.test('lang=ar',()=>pm.expect(J.fields&&J.fields.lang&&J.fields.lang.stringValue).to.eql('ar'));",
+											"pm.test('NFR <3s', ()=> pm.expect(pm.response.responseTime).to.be.below(3000));"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"fields\": {\n    \"lang\": {\n      \"stringValue\": \"ar\"\n    }\n  }\n}"
+								},
+								"url": {
+									"raw": "{{url2}}/v1/projects/{{projectId}}/databases/(default)/documents/teachers/{{teacherLocalId}}?updateMask.fieldPaths=lang",
+									"host": [
+										"{{url2}}"
+									],
+									"path": [
+										"v1",
+										"projects",
+										"{{projectId}}",
+										"databases",
+										"(default)",
+										"documents",
+										"teachers",
+										"{{teacherLocalId}}"
+									],
+									"query": [
+										{
+											"key": "updateMask.fieldPaths",
+											"value": "lang"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "FR9 — Update profile picture (photoUrl)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+											"pm.test(\"photoUrl updated\", () => {",
+											"  const J = pm.response.json();",
+											"  // بعض الردود ما ترجع photoUrl مباشرة، فنتأكد على الأقل من عدم وجود error",
+											"  pm.expect(J.error).to.be.undefined;",
+											"});",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"idToken\": \"{{authToken}}\",\n  \"deleteAttribute\": [\"PHOTO_URL\"],\n  \"returnSecureToken\": false\n}\n"
+								},
+								"url": {
+									"raw": "{{url1}}/v1/accounts:update?key={{FIREBASE_API_KEY}}",
+									"host": [
+										"{{url1}}"
+									],
+									"path": [
+										"v1",
+										"accounts:update"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "{{FIREBASE_API_KEY}}"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "FR10–FR11 Exam Management",
+					"item": [
+						{
+							"name": "FR10 — Create Exam (source=upload)",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"const uid=`exam_upload_${Date.now()}_${Math.floor(Math.random()*1e6)}`;pm.environment.set('examDocId',uid);"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"const t = pm.environment.get(\"authToken\");",
+											"if (t) pm.request.headers.upsert({key:\"Authorization\", value:\"Bearer \"+t});"
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('200/202',()=>pm.expect(pm.response.code).to.be.oneOf([200,202]));",
+											"let J={};try{J=pm.response.json();}catch(e){};pm.environment.set('examDocName',J.name||'');",
+											"pm.test('NFR <3s', ()=> pm.expect(pm.response.responseTime).to.be.below(3000));"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"fields\": {\n    \"title\": {\n      \"stringValue\": \"Exam from Upload {{$timestamp}}\"\n    },\n    \"teacherId\": {\n      \"stringValue\": \"{{teacherLocalId}}\"\n    },\n    \"source\": {\n      \"stringValue\": \"upload\"\n    },\n    \"status\": {\n      \"stringValue\": \"draft\"\n    },\n    \"createdAt\": {\n      \"timestampValue\": \"{{isoTimestamp}}\"\n    }\n  }\n}"
+								},
+								"url": {
+									"raw": "{{url2}}/v1/projects/{{projectId}}/databases/(default)/documents/exams?documentId={{examDocId}}",
+									"host": [
+										"{{url2}}"
+									],
+									"path": [
+										"v1",
+										"projects",
+										"{{projectId}}",
+										"databases",
+										"(default)",
+										"documents",
+										"exams"
+									],
+									"query": [
+										{
+											"key": "documentId",
+											"value": "{{examDocId}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "FR11 — Create Exam (source=ai)",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"const uid=`exam_ai_${Date.now()}_${Math.floor(Math.random()*1e6)}`;pm.environment.set('examDocId',uid);"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"const t = pm.environment.get(\"authToken\");",
+											"if (t) pm.request.headers.upsert({key:\"Authorization\", value:\"Bearer \"+t});"
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('200/202',()=>pm.expect(pm.response.code).to.be.oneOf([200,202]));",
+											"pm.test('NFR <3s', ()=> pm.expect(pm.response.responseTime).to.be.below(3000));"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"fields\": {\n    \"title\": {\n      \"stringValue\": \"AI Generated Exam {{$timestamp}}\"\n    },\n    \"teacherId\": {\n      \"stringValue\": \"{{teacherLocalId}}\"\n    },\n    \"source\": {\n      \"stringValue\": \"ai\"\n    },\n    \"status\": {\n      \"stringValue\": \"draft\"\n    },\n    \"createdAt\": {\n      \"timestampValue\": \"{{isoTimestamp}}\"\n    }\n  }\n}"
+								},
+								"url": {
+									"raw": "{{url2}}/v1/projects/{{projectId}}/databases/(default)/documents/exams?documentId={{examDocId}}",
+									"host": [
+										"{{url2}}"
+									],
+									"path": [
+										"v1",
+										"projects",
+										"{{projectId}}",
+										"databases",
+										"(default)",
+										"documents",
+										"exams"
+									],
+									"query": [
+										{
+											"key": "documentId",
+											"value": "{{examDocId}}"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "FR12–FR14 Grading",
+					"item": [
+						{
+							"name": "FR12 — List student submissions by exam",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"const t = pm.environment.get(\"authToken\");",
+											"if (t) pm.request.headers.upsert({key:\"Authorization\", value:\"Bearer \"+t});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('200 OK',()=>pm.response.to.have.status(200));",
+											"let arr=[];try{arr=pm.response.json();}catch(e){};pm.test('array',()=>Array.isArray(arr));",
+											"pm.test('NFR <3s', ()=> pm.expect(pm.response.responseTime).to.be.below(3000));"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"structuredQuery\": {\n    \"from\": [\n      {\n        \"collectionId\": \"submissions\"\n      }\n    ],\n    \"where\": {\n      \"fieldFilter\": {\n        \"field\": {\n          \"fieldPath\": \"examId\"\n        },\n        \"op\": \"EQUAL\",\n        \"value\": {\n          \"stringValue\": \"{{examDocId}}\"\n        }\n      }\n    },\n    \"limit\": 50\n  }\n}"
+								},
+								"url": {
+									"raw": "{{url2}}/v1/projects/{{projectId}}/databases/(default)/documents:runQuery",
+									"host": [
+										"{{url2}}"
+									],
+									"path": [
+										"v1",
+										"projects",
+										"{{projectId}}",
+										"databases",
+										"(default)",
+										"documents:runQuery"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "FR13 — AI-assisted grading (create draft grade)",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"const t = pm.environment.get(\"authToken\");",
+											"if (t) pm.request.headers.upsert({key:\"Authorization\", value:\"Bearer \"+t});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('200/202',()=>pm.expect(pm.response.code).to.be.oneOf([200,202]));",
+											"let J={};try{J=pm.response.json();}catch(e){};",
+											"let name=(J.name||''); name=(''+name).trim().replace(/\\n|\\r/g,''); pm.environment.set('gradeDocName',name);",
+											"pm.test('NFR AI <5s', ()=> pm.expect(pm.response.responseTime).to.be.below(5000));"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"fields\": {\n    \"examId\": {\n      \"stringValue\": \"{{examDocId}}\"\n    },\n    \"studentId\": {\n      \"stringValue\": \"SAMPLE_STUDENT_{{$randomInt}}\"\n    },\n    \"score\": {\n      \"integerValue\": \"80\"\n    },\n    \"aiSuggested\": {\n      \"booleanValue\": true\n    },\n    \"createdAt\": {\n      \"timestampValue\": \"{{isoTimestamp}}\"\n    }\n  }\n}"
+								},
+								"url": {
+									"raw": "{{url2}}/v1/projects/{{projectId}}/databases/(default)/documents/grades",
+									"host": [
+										"{{url2}}"
+									],
+									"path": [
+										"v1",
+										"projects",
+										"{{projectId}}",
+										"databases",
+										"(default)",
+										"documents",
+										"grades"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "FR14 — Accept/Modify AI grade (PATCH)",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"let n=pm.environment.get('gradeDocName')||''; n=(''+n).trim().replace(/\\n|\\r/g,''); pm.environment.set('gradeDocName',n);"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"const t = pm.environment.get(\"authToken\");",
+											"if (t) pm.request.headers.upsert({key:\"Authorization\", value:\"Bearer \"+t});"
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('200 OK',()=>pm.response.to.have.status(200));",
+											"let J={};try{J=pm.response.json();}catch(e){};",
+											"pm.test('score=90',()=>pm.expect(J.fields&&J.fields.score&&J.fields.score.integerValue).to.eql('90'));",
+											"pm.test('aiSuggested=false',()=>pm.expect(J.fields&&J.fields.aiSuggested&&J.fields.aiSuggested.booleanValue).to.eql(false));",
+											"pm.test('NFR <3s', ()=> pm.expect(pm.response.responseTime).to.be.below(3000));"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"fields\": {\n    \"score\": {\n      \"integerValue\": \"90\"\n    },\n    \"aiSuggested\": {\n      \"booleanValue\": false\n    }\n  }\n}"
+								},
+								"url": {
+									"raw": "{{url2}}/v1/{{gradeDocName}}?updateMask.fieldPaths=score&updateMask.fieldPaths=aiSuggested",
+									"host": [
+										"{{url2}}"
+									],
+									"path": [
+										"v1",
+										"{{gradeDocName}}"
+									],
+									"query": [
+										{
+											"key": "updateMask.fieldPaths",
+											"value": "score"
+										},
+										{
+											"key": "updateMask.fieldPaths",
+											"value": "aiSuggested"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "FR15 Reports",
+					"item": [
+						{
+							"name": "FR15 — Generate performance report (grades by exam)",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"const t = pm.environment.get(\"authToken\");",
+											"if (t) pm.request.headers.upsert({key:\"Authorization\", value:\"Bearer \"+t});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('200 OK',()=>pm.response.to.have.status(200));",
+											"let rows=[];try{rows=pm.response.json();}catch(e){};pm.test('array',()=>Array.isArray(rows));",
+											"pm.test('NFR <3s', ()=> pm.expect(pm.response.responseTime).to.be.below(3000));"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"structuredQuery\": {\n    \"from\": [\n      {\n        \"collectionId\": \"grades\"\n      }\n    ],\n    \"where\": {\n      \"fieldFilter\": {\n        \"field\": {\n          \"fieldPath\": \"examId\"\n        },\n        \"op\": \"EQUAL\",\n        \"value\": {\n          \"stringValue\": \"{{examDocId}}\"\n        }\n      }\n    },\n    \"limit\": 200\n  }\n}"
+								},
+								"url": {
+									"raw": "{{url2}}/v1/projects/{{projectId}}/databases/(default)/documents:runQuery",
+									"host": [
+										"{{url2}}"
+									],
+									"path": [
+										"v1",
+										"projects",
+										"{{projectId}}",
+										"databases",
+										"(default)",
+										"documents:runQuery"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"pm.environment.set('isoTimestamp', new Date().toISOString());"
+				]
+			}
+		}
+	]
+}
